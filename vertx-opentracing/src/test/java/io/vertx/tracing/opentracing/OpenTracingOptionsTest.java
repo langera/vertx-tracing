@@ -11,6 +11,7 @@
 
 package io.vertx.tracing.opentracing;
 
+import io.opentracing.Span;
 import io.opentracing.mock.MockTracer;
 import io.vertx.core.tracing.TracingOptions;
 import org.junit.Test;
@@ -23,10 +24,13 @@ public class OpenTracingOptionsTest {
   @Test
   public void testCopy() {
     MockTracer tracer = new MockTracer();
-    TracingOptions options = new OpenTracingOptions(tracer);
+    OpenTracingSpanDecorator decorator = (span, obj) -> {};
+    TracingOptions options = new OpenTracingOptions(tracer, decorator);
     TracingOptions copy = options.copy();
     assertTrue(copy instanceof OpenTracingOptions);
     OpenTracingOptions other = (OpenTracingOptions) copy;
     assertSame(tracer, other.getTracer());
+    assertSame(1, other.getDecorators().length);
+    assertSame(decorator, other.getDecorators()[0]);
   }
 }

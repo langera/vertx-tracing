@@ -15,24 +15,32 @@ import io.vertx.codegen.annotations.DataObject;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.tracing.TracingOptions;
 
+import java.util.Arrays;
+
 @DataObject
 public class OpenTracingOptions extends TracingOptions {
 
-  private Tracer tracer;
+  private final OpenTracingSpanDecorator[] decorators;
+  private final Tracer tracer;
 
   public OpenTracingOptions() {
-  }
-
-  public OpenTracingOptions(Tracer tracer) {
-    this.tracer = tracer;
+    tracer = null;
+    decorators = new OpenTracingSpanDecorator[0];
   }
 
   public OpenTracingOptions(OpenTracingOptions other) {
-    tracer = other.tracer;
+    this(other.tracer, other.decorators);
   }
 
   public OpenTracingOptions(JsonObject json) {
     super(json);
+    tracer = null;
+    decorators = new OpenTracingSpanDecorator[0];
+  }
+
+  public OpenTracingOptions(Tracer tracer, OpenTracingSpanDecorator... decorators) {
+    this.tracer = tracer;
+    this.decorators = decorators;
   }
 
   @Override
@@ -44,12 +52,15 @@ public class OpenTracingOptions extends TracingOptions {
   Tracer getTracer() {
     return tracer;
   }
+  OpenTracingSpanDecorator[] getDecorators() {
+    return Arrays.copyOf(decorators, decorators.length);
+  }
 
   io.vertx.core.spi.tracing.VertxTracer<?, ?> buildTracer() {
     if (tracer != null) {
-      return new OpenTracingTracer(false, tracer);
+      return new OpenTracingTracer(false, tracer, decorators);
     } else {
-      return new OpenTracingTracer(true, OpenTracingTracer.createDefaultTracer());
+      return new OpenTracingTracer(true, OpenTracingTracer.createDefaultTracer(), decorators);
     }
   }
 }

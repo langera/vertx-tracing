@@ -25,10 +25,11 @@ import io.vertx.core.spi.tracing.SpanKind;
 import io.vertx.core.spi.tracing.TagExtractor;
 import io.vertx.core.tracing.TracingPolicy;
 
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 /**
  * - https://github.com/opentracing/specification/blob/master/semantic_conventions.md
@@ -46,6 +47,7 @@ public class OpenTracingTracer implements io.vertx.core.spi.tracing.VertxTracer<
 
   private final boolean closeTracer;
   private final Tracer tracer;
+  private final OpenTracingSpanDecorator[] decorators;
 
   /**
    * Instantiate a OpenTracing tracer using the specified {@code tracer}.
@@ -53,9 +55,10 @@ public class OpenTracingTracer implements io.vertx.core.spi.tracing.VertxTracer<
    * @param closeTracer close the tracer when necessary
    * @param tracer the tracer instance
    */
-  public OpenTracingTracer(boolean closeTracer, Tracer tracer) {
+  public OpenTracingTracer(boolean closeTracer, Tracer tracer, OpenTracingSpanDecorator... decorators) {
     this.closeTracer = closeTracer;
     this.tracer = tracer;
+    this.decorators = decorators;
   }
 
   @Override
@@ -157,9 +160,22 @@ public class OpenTracingTracer implements io.vertx.core.spi.tracing.VertxTracer<
   }
 
   private <T> void reportTags(Span span, T obj, TagExtractor<T> tagExtractor) {
+    setTags(span, obj, tagExtractor);
+    decorateSpan(span, obj);
+  }
+
+  private <T> void setTags(Span span, T obj, TagExtractor<T> tagExtractor) {
     int len = tagExtractor.len(obj);
     for (int idx = 0; idx < len; idx++) {
       span.setTag(tagExtractor.name(obj, idx), tagExtractor.value(obj, idx));
+    }
+  }
+
+  private <T> void decorateSpan(Span span, T obj) {
+    for (OpenTracingSpanDecorator decorator : decorators) {
+      if (decorator.supports(obj)) {
+        decorator.decorate(span, obj);
+      }
     }
   }
 
